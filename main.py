@@ -18,7 +18,7 @@ logging.basicConfig(
 )
 
 def call_pool():
-    logging.info('Requesting Curve API')
+    logging.info('Requesting Curve API...')
     response = requests.get(
         CURVE_API_URL,
         timeout=5
@@ -36,6 +36,9 @@ def getusdPrice(curve_data, pool_id, token):
 
 def main():
 
+    # Broadcast version number
+    logging.info('Script Built on 10/9/2022')
+
     # Connect to Discord
     client = discord.Client()
     @client.event
@@ -49,18 +52,16 @@ def main():
     async def loop():
         try:
             json_data = call_pool()
-            ETH_price = getusdPrice(json_data, 14, 'ETH')
-            stETH_price = getusdPrice(json_data, 14, 'stETH')
-            stETH_ETH_ratio = round(stETH_price/ETH_price, 4)
+            LUSD_price = getusdPrice(json_data, 33, 'LUSD') * 0.9996 # curve fee of 0.040%
 
             await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='curve.fi'))
 
             total_guilds = 0
             for guild in client.guilds:
-                nickname = f"{stETH_ETH_ratio} stETH/ETH"
+                nickname = f"${round(LUSD_price, 4)}"
                 await client.get_guild(guild.id).me.edit(nick=nickname)
                 total_guilds += 1
-            logging.info(f"Updating activity, watching {total_guilds} guilds")
+            logging.info(f"Updating activity, watching {total_guilds} guild(s)")
         except:
             logging.error("Error occurred, loop not executed")
 
