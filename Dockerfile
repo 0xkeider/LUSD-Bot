@@ -5,6 +5,6 @@ ENV PYTHONUNBUFFERED=1
 ADD main.py .
 ADD config.py .
 
-RUN pip install requests discord
+RUN pip install requests discord millify
 
 CMD [ "python", "./main.py" ]

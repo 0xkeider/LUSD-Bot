@@ -1,12 +1,16 @@
-import config
 import requests
 import json
 import logging
+
 import discord
 from discord.ext import commands, tasks
+from millify import millify
 
-CURVE_API_URL = 'https://api.curve.fi/api/getPools/ethereum/main'
-TOKEN = config.DISCORD_API_KEY
+import config
+
+CURVE_API_URL     = 'https://api.curve.fi/api/getPools/ethereum/main'
+DEFILLAMA_API_URL = 'https://stablecoins.llama.fi/stablecoins?includePrices=true'
+TOKEN             = config.DISCORD_API_KEY
 
 # Logging Config
 logging.basicConfig(
@@ -17,16 +21,16 @@ logging.basicConfig(
     filemode='w'
 )
 
-def call_pool():
-    logging.info('Requesting Curve API...')
+def call_API(api_name, API_URL):
+    logging.info(f"Requesting {api_name} API...")
     response = requests.get(
-        CURVE_API_URL,
+        API_URL,
         timeout=5
     )
     logging.info('Request Complete')
     return response.json()
 
-def getusdPrice(curve_data, pool_id, token):
+def get_usd_price(curve_data, pool_id, token):
     pool_data = curve_data['data']['poolData'][pool_id]
     for coins in pool_data['coins']:
         coin_data = coins
@@ -34,10 +38,16 @@ def getusdPrice(curve_data, pool_id, token):
             usdPrice = coin_data['usdPrice']
             return usdPrice
 
+def get_circulating(json_data, stablecoin_id, token):
+    stablecoin_data = json_data['peggedAssets'][stablecoin_id]
+    if stablecoin_data['symbol'] == token:
+        circulating_supply = stablecoin_data['circulating']['peggedUSD']
+        return circulating_supply
+
 def main():
 
     # Broadcast version number
-    logging.info('Script Built on 10/9/2022')
+    logging.info('Script Built on 20/9/2022')
 
     # Connect to Discord
     client = discord.Client(intents=discord.Intents.default())
@@ -51,11 +61,14 @@ def main():
     @tasks.loop(seconds=60)
     async def loop():
         try:
-            json_data = call_pool()
-            LUSD_price = getusdPrice(json_data, 33, 'LUSD')
+            curve_json = call_API('Curve', CURVE_API_URL)
+            defillama_json = call_API('DefiLlama', DEFILLAMA_API_URL)
+            LUSD_price = get_usd_price(curve_json, 33, 'LUSD')
+            LUSD_circulating = get_circulating(defillama_json, 7, 'LUSD')
 
-            await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='curve.fi'))
+            await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name=f"{millify(LUSD_circulating)} circulating"))
 
+            # Update nickname in every connected guild
             total_guilds = 0
             for guild in client.guilds:
                 nickname = f"${round(LUSD_price, 4)}"
