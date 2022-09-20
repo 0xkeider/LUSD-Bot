@@ -52,7 +52,7 @@ def main():
     async def loop():
         try:
             json_data = call_pool()
-            LUSD_price = getusdPrice(json_data, 33, 'LUSD') * 0.9996 # curve fee of 0.040%
+            LUSD_price = getusdPrice(json_data, 33, 'LUSD')
 
             await client.change_presence(activity=discord.Activity(type=discord.ActivityType.watching, name='curve.fi'))
 
